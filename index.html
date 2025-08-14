@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tusker Lager Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2g+z1r5zV6m7d9mK5zJv15yF+p5p5B7a7r5Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        .tusker-bg {
+            background-image: linear-gradient(to bottom right, #ffcc00, #c8a300);
+        }
+        .tusker-text {
+            color: #c8a300;
+        }
+        .tusker-button {
+            background-color: #e0ac00;
+            color: white;
+            transition: all 0.2s;
+        }
+        .tusker-button:hover {
+            background-color: #c8a300;
+            transform: scale(1.05);
+        }
+        .correct-answer {
+            background-color: #28a745 !important;
+            color: white !important;
+        }
+        .incorrect-answer {
+            background-color: #dc3545 !important;
+            color: white !important;
+        }
+        #next-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #submit-score-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Age Verification Section -->
+    <div id="age-gate" class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full text-center">
+        <h2 class="text-2xl font-bold mb-4">Please verify your age</h2>
+        <p class="text-gray-700 mb-6">You must be 18 years or older to participate in this quiz.</p>
+        <div class="flex items-center mb-6">
+            <input type="checkbox" id="age-consent-checkbox" class="h-4 w-4 text-yellow-500 rounded focus:ring-yellow-500 border-gray-300">
+            <label for="age-consent-checkbox" class="ml-2 text-sm text-gray-700">I confirm I am 18 years or older.</label>
+        </div>
+        <button id="age-verify-button" class="w-full tusker-button py-3 px-6 rounded-lg font-bold text-xl shadow-lg focus:outline-none">
+            Start
+        </button>
+        <div id="age-denied-message" class="hidden mt-4 p-4 rounded-lg bg-red-100 text-red-800 border border-300">
+            <p class="font-bold">Access Denied</p>
+            <p class="text-sm mt-1">Please try some Kenyan trivia by the one and only Bojack Msafiri instead. <a href="https://matetejotham.github.io/kenya-trivia-leaderboard-v1.0/" target="_blank" class="text-red-600 underline">Click here!</a></p>
+        </div>
+    </div>
+
+    <!-- Main Quiz Container -->
+    <div id="quiz-container" class="hidden bg-white rounded-lg shadow-2xl p-8 max-w-xl w-full">
+        <!-- Prize Announcement Section -->
+        <div class="tusker-bg text-black p-4 mb-6 rounded-lg shadow-inner text-center">
+            <h2 class="font-bold text-xl">Top Scorer Wins a Free 6-Pack Every Saturday!</h2>
+            <p class="text-sm mt-1">Offer valid until August 31st.</p>
+        </div>
+
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-gray-800 flex items-center justify-center space-x-4">
+                <span>🐘</span>
+                <span>Tusker Lager Quiz</span>
+                <span>🐘</span>
+            </h1>
+            <p class="text-gray-600 mt-2">Test your knowledge of Kenya's iconic beer!</p>
+        </header>
+
+        <!-- Quiz Screens -->
+        <div id="quiz-content">
+            <!-- Start Screen -->
+            <div id="start-screen" class="text-center">
+                <p class="text-gray-700 text-lg mb-6">You're about to embark on a journey through the history and facts of Tusker. Let's see how much you know!</p>
+                <button id="start-button" class="w-full tusker-button py-3 px-6 rounded-lg font-bold text-xl shadow-lg hover:shadow-xl focus:outline-none">
+                    Start Quiz
+                </button>
+            </div>
+
+            <!-- Quiz Screen -->
+            <div id="quiz-screen" class="hidden">
+                <h2 class="text-xl font-bold mb-4" id="question-text">Question goes here...</h2>
+                <div id="answers-container" class="space-y-4">
+                    <!-- Answer buttons will be dynamically added here -->
+                </div>
+                <!-- Next button and Fun Fact section -->
+                <div class="mt-6 flex justify-start">
+                    <button id="next-button" class="tusker-button py-2 px-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl focus:outline-none disabled" disabled>
+                        Next Question
+                    </button>
+                </div>
+                <div id="fun-fact-section" class="mt-4 p-4 rounded-lg tusker-bg text-black shadow-inner hidden">
+                    <h3 class="font-bold text-lg mb-2">Fun Fact!</h3>
+                    <p id="fun-fact-text" class="text-sm"></p>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="hidden text-center">
+                <h2 class="text-3xl font-bold mb-4">Quiz Complete!</h2>
+                <p class="text-lg mb-2">You scored <span id="score-text" class="font-bold tusker-text">0</span> out of <span id="total-questions"></span>.</p>
+                
+                <!-- Funny Beer Quote Section -->
+                <div id="quote-section" class="mt-4 p-4 rounded-lg bg-gray-100 italic text-gray-700 hidden">
+                    <p id="beer-quote"></p>
+                </div>
+
+                <!-- Score Submission and Play Again Buttons -->
+                <div class="mt-8 flex justify-center items-center space-x-4">
+                    <div id="submit-score-container" class="flex flex-col w-1/2">
+                        <p class="mb-2 text-gray-700">Enter your name to submit your score!</p>
+                        <input type="text" id="player-name" class="w-full p-2 mb-4 border rounded-md" placeholder="Your Name">
+                        <button id="submit-score-button" class="w-full tusker-button py-3 px-6 rounded-lg font-bold text-xl shadow-lg hover:shadow-xl focus:outline-none">
+                            Submit Score
+                        </button>
+                        <p id="submission-message" class="text-sm mt-2 hidden"></p>
+                    </div>
+                    <button id="restart-button" class="w-1/2 tusker-button py-3 px-6 rounded-lg font-bold text-xl shadow-lg hover:shadow-xl focus:outline-none">
+                        Play Again
+                    </button>
+                </div>
+
+                <!-- Sharing Section -->
+                <div id="share-section" class="mt-8 pt-6 border-t border-gray-200 hidden">
+                    <h3 class="text-xl font-bold mb-4">Share your score!</h3>
+                    <div class="flex flex-col items-center space-y-4">
+                        <div id="qrcode" class="p-2 bg-white rounded-lg shadow-md"></div>
+                        <p class="text-sm text-gray-500">Scan this code to share the quiz!</p>
+                        <div class="flex space-x-4">
+                            <a href="#" id="share-fb" class="text-3xl text-gray-600 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
+                            <a href="#" id="share-x" class="text-3xl text-gray-600 hover:text-black transition-colors"><i class="fab fa-x-twitter"></i></a>
+                            <a href="#" id="share-ig" class="text-3xl text-gray-600 hover:text-pink-600 transition-colors"><i class="fab fa-instagram"></i></a>
+                            <a href="#" id="share-tt" class="text-3xl text-gray-600 hover:text-black transition-colors"><i class="fab fa-tiktok"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Jamming Now Section -->
+    <div id="music-section" class="bg-white rounded-lg shadow-2xl p-8 max-w-xl w-full mt-8">
+        <h2 class="text-2xl font-bold text-center mb-4">What Are You Jamming To? 🎶</h2>
+        <p class="text-center text-gray-700 mb-4">Tell us what's on repeat and a weekly playlist of the top 30 songs will be released every Friday evening for the weekend!</p>
+        <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 items-center">
+            <input type="text" id="song-input" class="w-full p-2 border rounded-md" placeholder="Enter your favorite song...">
+            <button id="submit-song-button" class="w-full md:w-auto tusker-button py-2 px-6 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl focus:outline-none">
+                Submit
+            </button>
+        </div>
+        <div id="song-submission-message" class="hidden mt-4 p-4 rounded-lg bg-yellow-100 text-yellow-800 border border-yellow-300">
+            <p>Thank you! We've noted your jam. Stay tuned for the weekly playlist this Friday evening!</p>
+        </div>
+    </div>
+
+    <!-- Responsible Drinking and Disclaimer -->
+    <div class="max-w-xl w-full text-gray-500 rounded-lg p-4 mt-8 text-center space-y-1 text-sm shadow-md">
+        <p class="font-bold">Disclaimer: All Tusker brand elements, trademarks, and factual information presented in this quiz are property of East African Breweries Limited (EABL). This is an unofficial fan creation not affiliated with EABL.</p>
+        <p>Drink responsibly.</p>
+        <p>Alcohol is not for sale to persons under 18.</p>
+        <p>Do not drink and drive or operate machinery.</p>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        const quizData = [
+            {
+                question: "What year was Tusker Lager first brewed?",
+                answers: [
+                    { text: "1922", correct: true },
+                    { text: "1945", correct: false },
+                    { text: "1963", correct: false },
+                    { text: "1905", correct: false }
+                ],
+                funFact: "Tusker Lager was first brewed in 1922 by Kenya Breweries Limited, making it one of the oldest beers in East Africa."
+            },
+            {
+                question: "What does the word 'Tusker' refer to on the bottle?",
+                answers: [
+                    { text: "An elephant's horn", correct: false },
+                    { text: "A brewer's tool", correct: false },
+                    { text: "A name for a strong beer", correct: false },
+                    { text: "An elephant with large tusks", correct: true }
+                ],
+                funFact: "The name 'Tusker' was chosen in memory of George Hurst, one of the brewery's founders, who was tragically killed by an elephant with large tusks."
+            },
+            {
+                question: "Which iconic mountain is featured on the Tusker bottle label?",
+                answers: [
+                    { text: "Mount Kilimanjaro", correct: false },
+                    { text: "Mount Kenya", correct: true },
+                    { text: "Mount Everest", correct: false },
+                    { text: "Mount Fuji", correct: false }
+                ],
+                funFact: "The majestic silhouette on the label is Mount Kenya, a symbol of national pride and strength."
+            },
+            {
+                question: "What company owns the Tusker brand?",
+                answers: [
+                    { text: "SABMiller", correct: false },
+                    { text: "Diageo", correct: true },
+                    { text: "Heineken", correct: false },
+                    { text: "Anheuser-Busch InBev", correct: false }
+                ],
+                funFact: "Tusker is a flagship brand of East African Breweries Limited (EABL), which is a subsidiary of Diageo."
+            },
+            {
+                question: "What is the slogan for Tusker Lager?",
+                answers: [
+                    { text: "The Great Beer", correct: false },
+                    { text: "Refreshingly Kenyan", correct: true },
+                    { text: "Kenya's Finest", correct: false },
+                    { text: "East Africa's Choice", correct: false }
+                ],
+                funFact: "The slogan 'Refreshingly Kenyan' highlights the beer's deep roots and local pride."
+            },
+            {
+                question: "In what country is Tusker Lager primarily sold?",
+                answers: [
+                    { text: "Uganda", correct: false },
+                    { text: "Tanzania", correct: false },
+                    { text: "Kenya", correct: true },
+                    { text: "South Africa", correct: false }
+                ],
+                funFact: "While popular across East Africa, Tusker Lager's home and primary market is Kenya."
+            },
+            {
+                question: "What type of beer is Tusker Lager?",
+                answers: [
+                    { text: "Stout", correct: false },
+                    { text: "Pale Ale", correct: false },
+                    { text: "Pale Lager", correct: true },
+                    { text: "Wheat Beer", correct: false }
+                ],
+                funFact: "Tusker Lager is a pale lager, known for its balanced and refreshing taste. This is different from a Pilsner, which is a specific style of lager known for its hoppy and crisp flavor."
+            },
+            {
+                question: "Tusker Lite is a low-calorie version of Tusker. What color is its label?",
+                answers: [
+                    { text: "Blue", correct: true },
+                    { text: "Green", correct: false },
+                    { text: "Red", correct: false },
+                    { text: "Gold", correct: false }
+                ],
+                funFact: "Tusker Lite was introduced to cater to a new generation of drinkers looking for a lighter, more refreshing beer."
+            },
+            {
+                question: "What is the slogan often associated with Tusker Malt Lager?",
+                answers: [
+                    { text: "The Smoothest Taste", correct: true },
+                    { text: "For the Discerning Palate", correct: false },
+                    { text: "Bold and Malty", correct: false },
+                    { text: "Rich and Refreshing", correct: false }
+                ],
+                funFact: "Tusker Malt is a premium lager known for its exceptionally smooth and rich flavor profile."
+            },
+            {
+                question: "Where is the main brewery for Tusker Lager located?",
+                answers: [
+                    { text: "Mombasa", correct: false },
+                    { text: "Nairobi", correct: true },
+                    { text: "Kisumu", correct: false },
+                    { text: "Nakuru", correct: false }
+                ],
+                funFact: "The main brewery is located in Ruaraka, a suburb of Nairobi, the capital city of Kenya."
+            },
+            {
+                question: "What is the alcohol by volume (ABV) of Tusker Lager?",
+                answers: [
+                    { text: "4.2%", correct: true },
+                    { text: "5.0%", correct: false },
+                    { text: "4.6%", correct: false },
+                    { text: "6.1%", correct: false }
+                ],
+                funFact: "Tusker Lager's ABV is 4.2%, placing it within the typical range for a standard lager."
+            },
+            {
+                question: "Tusker has been a major sponsor of what popular Kenyan sporting event?",
+                answers: [
+                    { text: "Safari Rally", correct: false },
+                    { text: "Nairobi Marathon", correct: false },
+                    { text: "Kenya Sevens Rugby", correct: true },
+                    { text: "Gor Mahia FC", correct: false }
+                ],
+                funFact: "Tusker's sponsorship of the Kenya Sevens national rugby team is a significant part of its brand identity."
+            },
+            {
+                question: "The name of the company that brews Tusker is an acronym. What does it stand for?",
+                answers: [
+                    { text: "East African Beverages", correct: false },
+                    { text: "East African Beer Limited", correct: false },
+                    { text: "East African Breweries Limited", correct: true },
+                    { text: "Eastern Africa Beverages", correct: false }
+                ],
+                funFact: "EABL is a major player in the East African beverage market, with a wide portfolio of products."
+            },
+            {
+                question: "The first batch of Tusker Lager was brewed in 1922. What was the name of the original brewery?",
+                answers: [
+                    { text: "Kenya Breweries Limited", correct: true },
+                    { text: "Nairobi Brewing Company", correct: false },
+                    { text: "Mount Kenya Breweries", correct: false },
+                    { text: "East Africa Beer", correct: false }
+                ],
+                funFact: "Kenya Breweries Limited was founded by George and Charles Hurst and later merged to form EABL."
+            },
+            {
+                question: "Tusker Lager is exported to several countries. Which of these is NOT a destination?",
+                answers: [
+                    { text: "United Kingdom", correct: false },
+                    { text: "United States", correct: false },
+                    { text: "Australia", correct: true },
+                    { text: "Germany", correct: false }
+                ],
+                funFact: "Tusker is a popular import beer in many countries, but Australia is not one of its primary export destinations."
+            },
+            {
+                question: "What key ingredient gives Tusker its distinctive taste?",
+                answers: [
+                    { text: "Barley", correct: true },
+                    { text: "Rice", correct: false },
+                    { text: "Corn", correct: false },
+                    { text: "Wheat", correct: false }
+                ],
+                funFact: "Like most lagers, Tusker's main ingredient is a combination of water, malted barley, hops, and yeast."
+            },
+            {
+                question: "The Tusker Lager bottle is primarily what color?",
+                answers: [
+                    { text: "Green", correct: false },
+                    { text: "Brown", correct: true },
+                    { text: "Clear", correct: false },
+                    { text: "Blue", correct: false }
+                ],
+                funFact: "Brown glass bottles are often used for beer because they protect the contents from UV light, which can spoil the taste."
+            },
+            {
+                question: "Tusker has a long history of sponsoring a famous Kenyan football club. Which one?",
+                answers: [
+                    { text: "AFC Leopards", correct: false },
+                    { text: "Sofapaka FC", correct: false },
+                    { text: "Gor Mahia FC", correct: true },
+                    { text: "Tusker FC", correct: false }
+                ],
+                funFact: "Tusker FC is actually a team owned by the brewery itself, but they have also sponsored other top clubs in the past."
+            },
+            {
+                question: "What is the name of the light version of Tusker beer?",
+                answers: [
+                    { text: "Tusker Lite", correct: true },
+                    { text: "Tusker Silver", correct: false },
+                    { text: "Tusker Clear", correct: false },
+                    { text: "Tusker Fresh", correct: false }
+                ],
+                funFact: "Tusker Lite offers a crisp, light, and low-calorie alternative to the original lager."
+            },
+            {
+                question: "What type of hops are typically used in brewing Tusker?",
+                answers: [
+                    { text: "Citra Hops", correct: false },
+                    { text: "Cascade Hops", correct: false },
+                    { text: "Hallertau Hops", correct: true },
+                    { text: "Saaz Hops", correct: false }
+                ],
+                funFact: "Hallertau hops, a classic noble hop, are known for their distinct aroma and flavor, which contribute to Tusker's unique taste."
+            },
+            {
+                question: "Which of these is a key ingredient in Tusker's malting process?",
+                answers: [
+                    { text: "Sorghum", correct: false },
+                    { text: "Maize", correct: false },
+                    { text: "Barley", correct: true },
+                ],
+                funFact: "Malted barley is the foundation of Tusker, providing the sugars for fermentation."
+            },
+            {
+                question: "Tusker's slogan 'Refreshingly Kenyan' emphasizes its connection to what?",
+                answers: [
+                    { text: "The coastal region", correct: false },
+                    { text: "National pride and heritage", correct: true },
+                    { text: "The savanna wildlife", correct: false },
+                    { text: "Kenyan cuisine", correct: false }
+                ],
+                funFact: "The slogan is a tribute to Kenya's culture and vibrant spirit, positioning the beer as a national icon."
+            },
+            {
+                question: "What is the shape of the bottle cap on a standard Tusker Lager bottle?",
+                answers: [
+                    { text: "A crown", correct: true },
+                    { text: "A flat circle", correct: false },
+                    { text: "A square", correct: false },
+                    { text: "A triangle", correct: false }
+                ],
+                funFact: "The 'crown cap' is a standard feature on most beer bottles, ensuring the beer stays fresh."
+            },
+            {
+                question: "What is the primary role of yeast in brewing Tusker?",
+                answers: [
+                    { text: "To add flavor", correct: false },
+                    { text: "To prevent spoilage", correct: false },
+                    { text: "To ferment sugars into alcohol", correct: true },
+                    { text: "To make the beer fizzy", correct: false }
+                ],
+                funFact: "Yeast is the magical microbe that converts the sugar from the malted barley into alcohol and carbon dioxide."
+            },
+            // The following questions are new additions from the user's provided list
+            {
+                question: "Tusker Lager has won awards at which international competition?",
+                answers: [
+                    { text: "World Beer Cup", correct: false },
+                    { text: "Monde Selection", correct: true },
+                    { text: "African Beer Awards", correct: false },
+                    { text: "Global Beer Fest", correct: false }
+                ],
+                funFact: "Monde Selection is a prestigious international quality institute that evaluates food and drink products."
+            },
+            {
+                question: "Which city is home to Tusker’s main brewery?",
+                answers: [
+                    { text: "Mombasa", correct: false },
+                    { text: "Nairobi", correct: true },
+                    { text: "Kisumu", correct: false },
+                    { text: "Nakuru", correct: false }
+                ],
+                funFact: "The main brewery is located in Ruaraka, Nairobi, the capital city of Kenya."
+            },
+            {
+                question: "Tusker has been brewed for over how many years?",
+                answers: [
+                    { text: "50 years", correct: false },
+                    { text: "75 years", correct: false },
+                    { text: "100 years", correct: true },
+                    { text: "120 years", correct: false }
+                ],
+                funFact: "Having been founded in 1922, the brand has been a staple in Kenya for over a century."
+            },
+            {
+                question: "Who co-founded Kenya Breweries Ltd with George Hurst?",
+                answers: [
+                    { text: "John Hurst", correct: false },
+                    { text: "Peter Hurst", correct: false },
+                    { text: "Charles Hurst", correct: true },
+                    { text: "William Hurst", correct: false }
+                ],
+                funFact: "The brothers George and Charles Hurst were the original founders of Kenya Breweries Ltd."
+            },
+            {
+                question: "Tusker Lager is brewed from what type of grain?",
+                answers: [
+                    { text: "Barley", correct: true },
+                    { text: "Wheat", correct: false },
+                    { text: "Sorghum", correct: false },
+                    { text: "Maize", correct: false }
+                ],
+                funFact: "Malted barley is the primary grain used in the brewing of Tusker Lager."
+            },
+            {
+                question: "Tusker Lager is often consumed during which type of Kenyan gathering?",
+                answers: [
+                    { text: "Religious ceremonies", correct: false },
+                    { text: "Social events", correct: true },
+                    { text: "School functions", correct: false },
+                    { text: "Government meetings", correct: false }
+                ],
+                funFact: "Tusker is a very popular drink at social events, celebrations, and gatherings across Kenya."
+            },
+            {
+                question: "Tusker Lager exports primarily target which continent outside Africa?",
+                answers: [
+                    { text: "Asia", correct: false },
+                    { text: "Europe", correct: true },
+                    { text: "North America", correct: false },
+                    { text: "Australia", correct: false }
+                ],
+                funFact: "Tusker Lager is exported to several countries, with a significant market in Europe."
+            },
+            {
+                question: "Tusker Lager bottles feature what text at the top of the label?",
+                answers: [
+                    { text: "Premium Lager", correct: false },
+                    { text: "Quality Lager Beer", correct: true },
+                    { text: "Brewed in Kenya", correct: false },
+                    { text: "Taste the Pride", correct: false }
+                ],
+                funFact: "The 'Quality Lager Beer' text is a mark of the brand's commitment to its brewing standards."
+            },
+            {
+                question: "Tusker Lager was first brewed after importing equipment from which country?",
+                answers: [
+                    { text: "Germany", correct: false },
+                    { text: "Britain", correct: true },
+                    { text: "USA", correct: false },
+                    { text: "Netherlands", correct: false }
+                ],
+                funFact: "The original brewing equipment was imported from Britain, where the founders were from."
+            },
+            {
+                question: "Tusker Lager’s centenary celebrations included which limited edition?",
+                answers: [
+                    { text: "New flavor", correct: false },
+                    { text: "Special centenary label", correct: true },
+                    { text: "Gift packs", correct: false },
+                    { text: "Gold cap", correct: false }
+                ],
+                funFact: "To celebrate 100 years, Tusker released a limited-edition bottle with a special label."
+            },
+            {
+                question: "Tusker Lager is brewed under which beer category?",
+                answers: [
+                    { text: "Ale", correct: false },
+                    { text: "Stout", correct: false },
+                    { text: "Lager", correct: true },
+                    { text: "Pilsner", correct: false }
+                ],
+                funFact: "Lager is the broad category of beer that Tusker falls under, with 'pale lager' being the specific style."
+            },
+            {
+                question: "Tusker has partnered with which sports league in Kenya?",
+                answers: [
+                    { text: "Kenya Premier League", correct: true },
+                    { text: "Kenya Rugby League", correct: false },
+                    { text: "Kenya Basketball League", correct: false },
+                    { text: "Kenya Cricket League", correct: false }
+                ],
+                funFact: "Tusker's sponsorship extends beyond rugby to the top-tier football league in Kenya."
+            },
+            {
+                question: "Tusker Malt Lager is brewed with what alcohol percentage?",
+                answers: [
+                    { text: "4.0%", correct: false },
+                    { text: "4.2%", correct: false },
+                    { text: "5.0%", correct: true },
+                    { text: "6.0%", correct: false }
+                ],
+                funFact: "Tusker Malt has a slightly higher alcohol content than the standard Tusker Lager."
+            }
+        ];
+        
+        // Funny Beer Quotes
+        const beerQuotes = [
+            "Beer is proof that God loves us and wants us to be happy.",
+            "I'm not a drinker; I'm a beer connoisseur.",
+            "Without beer, life would be a mistake.",
+            "To beer, or not to beer? That is a silly question.",
+            "The only thing better than a cold beer is a cold beer with a friend.",
+            "I don't have a beer belly. I have a fuel tank for a party machine.",
+            "A fine beer may be judged with only one sip, but it's better to be thoroughly sure."
+        ];
+
+        const ageGate = document.getElementById('age-gate');
+        const ageVerifyButton = document.getElementById('age-verify-button');
+        const ageConsentCheckbox = document.getElementById('age-consent-checkbox');
+        const ageDeniedMessage = document.getElementById('age-denied-message');
+        const quizContainer = document.getElementById('quiz-container');
+
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.getElementById('answers-container');
+        const funFactText = document.getElementById('fun-fact-text');
+        const funFactSection = document.getElementById('fun-fact-section');
+        const scoreText = document.getElementById('score-text');
+        const totalQuestionsElement = document.getElementById('total-questions');
+        const nextButton = document.getElementById('next-button');
+        const submitScoreContainer = document.getElementById('submit-score-container');
+        const submitScoreButton = document.getElementById('submit-score-button');
+        const playerNameInput = document.getElementById('player-name');
+        const submissionMessage = document.getElementById('submission-message');
+        
+        const shareSection = document.getElementById('share-section');
+        const quoteSection = document.getElementById('quote-section');
+        const beerQuoteElement = document.getElementById('beer-quote');
+        const qrcodeElement = document.getElementById('qrcode');
+        const shareFbButton = document.getElementById('share-fb');
+        const shareXButton = document.getElementById('share-x');
+        const shareIgButton = document.getElementById('share-ig');
+        const shareTtButton = document.getElementById('share-tt');
+
+        // New elements for the music section
+        const musicSection = document.getElementById('music-section');
+        const songInput = document.getElementById('song-input');
+        const submitSongButton = document.getElementById('submit-song-button');
+        const songSubmissionMessage = document.getElementById('song-submission-message');
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const totalQuestions = 20; // Number of questions per quiz run
+        let shuffledQuizData;
+        let isFirstRunToday = true;
+
+        // Check submission status on page load
+        function checkSubmissionStatus() {
+            const today = new Date().toDateString();
+            const lastSubmission = JSON.parse(localStorage.getItem('tuskerQuizSubmission'));
+            if (lastSubmission && lastSubmission.date === today) {
+                isFirstRunToday = false;
+                if (submissionMessage) {
+                    submissionMessage.innerText = `You already submitted a score today. Try again tomorrow!`;
+                    submissionMessage.classList.remove('hidden');
+                }
+            } else {
+                isFirstRunToday = true;
+            }
+        }
+
+        // Age Verification Logic
+        ageVerifyButton.addEventListener('click', () => {
+            if (ageConsentCheckbox.checked) {
+                ageGate.classList.add('hidden');
+                quizContainer.classList.remove('hidden');
+                musicSection.classList.remove('hidden');
+                checkSubmissionStatus(); // Check for submission on verification
+            } else {
+                ageDeniedMessage.classList.remove('hidden');
+            }
+        });
+
+        // Function to shuffle the questions
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Function to display the current question
+        function showQuestion() {
+            if (currentQuestionIndex < totalQuestions) {
+                const question = shuffledQuizData[currentQuestionIndex];
+                questionText.innerText = question.question;
+                answersContainer.innerHTML = '';
+                funFactSection.classList.add('hidden');
+                nextButton.classList.add('disabled');
+                nextButton.disabled = true;
+
+                question.answers.forEach(answer => {
+                    const button = document.createElement('button');
+                    button.innerText = answer.text;
+                    button.classList.add('w-full', 'p-4', 'bg-gray-100', 'rounded-lg', 'text-gray-800', 'font-semibold', 'text-left', 'hover:bg-gray-200', 'transition-colors', 'focus:outline-none');
+                    button.addEventListener('click', () => selectAnswer(button, answer.correct, question.funFact));
+                    answersContainer.appendChild(button);
+                });
+            } else {
+                showResults();
+            }
+        }
+
+        // Function to handle answer selection
+        function selectAnswer(selectedButton, isCorrect, funFact) {
+            const answerButtons = answersContainer.querySelectorAll('button');
+            answerButtons.forEach(button => {
+                button.disabled = true;
+                if (button === selectedButton) {
+                    if (isCorrect) {
+                        button.classList.add('correct-answer');
+                        score++;
+                        confetti({
+                            particleCount: 50,
+                            spread: 70,
+                            origin: { y: 0.6 }
+                        });
+                    } else {
+                        button.classList.add('incorrect-answer');
+                    }
+                }
+                if (isCorrect) {
+                    // Highlight the correct answer if the user got it wrong
+                    if (button.innerText === funFact.correctAnswer) {
+                         button.classList.add('correct-answer');
+                    }
+                }
+            });
+            funFactText.innerText = funFact;
+            funFactSection.classList.remove('hidden');
+            nextButton.classList.remove('disabled');
+            nextButton.disabled = false;
+        }
+
+        // Function to show the results screen
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            scoreText.innerText = score;
+            totalQuestionsElement.innerText = totalQuestions;
+
+            // Show a random beer quote
+            const randomQuote = beerQuotes[Math.floor(Math.random() * beerQuotes.length)];
+            beerQuoteElement.innerText = randomQuote;
+            quoteSection.classList.remove('hidden');
+
+            // Handle score submission button state
+            if (!isFirstRunToday) {
+                submitScoreButton.classList.add('disabled');
+                submitScoreButton.disabled = true;
+                playerNameInput.disabled = true;
+                submissionMessage.innerText = `You have already submitted a score today. Please play again tomorrow!`;
+                submissionMessage.classList.remove('hidden');
+            } else {
+                submitScoreButton.classList.remove('disabled');
+                submitScoreButton.disabled = false;
+                playerNameInput.disabled = false;
+                submissionMessage.classList.add('hidden');
+            }
+
+            // Generate QR code for sharing
+            generateQRCode();
+
+            // Set up sharing links
+            setupShareLinks();
+        }
+
+        // Function to handle score submission (this is a mock function as there is no backend)
+        function submitScore() {
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                // Here you would typically send the score and name to a server
+                console.log(`Score submitted: ${playerName} with a score of ${score}`);
+                const today = new Date().toDateString();
+                localStorage.setItem('tuskerQuizSubmission', JSON.stringify({ name: playerName, score: score, date: today }));
+                isFirstRunToday = false;
+                submissionMessage.innerText = `Score submitted for ${playerName}!`;
+                submissionMessage.classList.remove('hidden');
+                submitScoreButton.classList.add('disabled');
+                submitScoreButton.disabled = true;
+                playerNameInput.disabled = true;
+                shareSection.classList.remove('hidden');
+            } else {
+                submissionMessage.innerText = "Please enter your name to submit your score.";
+                submissionMessage.classList.remove('hidden');
+            }
+        }
+
+        // Function to restart the quiz
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            resultsScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            shareSection.classList.add('hidden');
+            playerNameInput.value = '';
+            submissionMessage.classList.add('hidden');
+            checkSubmissionStatus();
+        }
+
+        // Function to handle the start of the quiz
+        function startQuiz() {
+            // Shuffle the quiz data and pick the first 'totalQuestions' number of questions
+            shuffledQuizData = [...quizData];
+            shuffle(shuffledQuizData);
+            shuffledQuizData = shuffledQuizData.slice(0, totalQuestions);
+
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            showQuestion();
+        }
+
+        // Function to generate QR Code
+        function generateQRCode() {
+            qrcodeElement.innerHTML = ''; // Clear previous QR code
+            const quizUrl = window.location.href;
+            new QRCode(qrcodeElement, quizUrl);
+        }
+
+        // Function to set up social media share links
+        function setupShareLinks() {
+            const shareText = `I scored ${score} out of ${totalQuestions} on the Tusker Lager Quiz! Think you can beat my score?`;
+            const quizUrl = window.location.href;
+            
+            // Facebook
+            shareFbButton.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(quizUrl)}&quote=${encodeURIComponent(shareText)}`;
+            
+            // X (Twitter)
+            shareXButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(quizUrl)}`;
+            
+            // Instagram (no direct sharing link, will just direct to IG)
+            shareIgButton.href = `https://www.instagram.com/`;
+
+            // TikTok (no direct sharing link, will just direct to TT)
+            shareTtButton.href = `https://www.tiktok.com/`;
+        }
+
+        // Function to handle music submission
+        function submitSong() {
+            const songName = songInput.value.trim();
+            if (songName) {
+                console.log(`New song submitted: ${songName}`);
+                // In a real application, this would send the song name to a backend.
+                songInput.value = ''; // Clear the input field
+                songSubmissionMessage.classList.remove('hidden');
+                // Hide the entire music section after a brief delay
+                setTimeout(() => {
+                    songSubmissionMessage.classList.add('hidden');
+                    musicSection.classList.add('hidden'); // Hide the music section
+                }, 5000);
+            }
+        }
+
+        // Event Listeners
+        startButton.addEventListener('click', startQuiz);
+        nextButton.addEventListener('click', () => {
+            currentQuestionIndex++;
+            showQuestion();
+        });
+        restartButton.addEventListener('click', restartQuiz);
+        submitScoreButton.addEventListener('click', submitScore);
+        submitSongButton.addEventListener('click', submitSong);
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSubmissionStatus();
+        });
+
+    </script>
+</body>
+</html>
